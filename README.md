@@ -6,7 +6,7 @@ A Laravel-based REST API for uploading, analyzing, and managing PDF documents us
 ## 🏗️ System Architecture Diagram
 
 Check out the demo on YouTube:  
-[👉 Watch the demo here](https://www.youtube.com/watch?v=fQkxtaQirDo)
+<!-- [👉 Watch the demo here](https://www.youtube.com/watch?v=fQkxtaQirDo) -->
 
 ![Architecture Diagram](https://github.com/bhingle/document-analysis/blob/main/Architecture%20Diagram.png?raw=true)
 
@@ -34,12 +34,12 @@ This architecture shows a Laravel-based system:
 - `Http\Request`
 ---
 ## 🛠️ Project Setup
-Follow the instructions [here](https://docs.google.com/document/d/1pOb4KlfSNzRetxwUk9A92W2aj5bUdJCUqD7Rgi0wFC4/edit?usp=sharing)
+Follow the instructions [here](https://docs.google.com/document/d/1lh_Y7cG9ORtyCnf2il0jfE18xEMv0HZQJuaBefRLjSc/edit?usp=sharing)
 
 ---
 ## 📝 API Endpoints
 
-Download the Postman Collection: [Download Collection](https://github.com/bhingle/document-analysis/blob/main/Document%20Analysis.postman_collection.json)
+Download the Postman Collection: [Download Collection](https://github.com/fbelim476/document-analysist-by-open-ai/blob/main/Document%20Analysis.postman_collection.json)
 
 | Endpoint                         | Method | Controller Method                     | Description                                 | Request Body / Params                                                       | Response Example |
 |---------------------------------|--------|--------------------------------------|---------------------------------------------|-----------------------------------------------------------------------------|-----------------|
@@ -50,8 +50,8 @@ Download the Postman Collection: [Download Collection](https://github.com/bhingl
 | `/documents`                     | GET    | `DocumentController@index`            | Lists all uploaded documents of the authenticated user. | None <br> URL: `http://127.0.0.1:8000/api/documents`                      | ```json { "documents": [ { "id": 23, "original_name": "Sample_Service_Contract.pdf", "uploaded_at": "2025-05-03T17:51:30.000000Z", "url": "/storage/documents/glHzl9MdEHjZGVjKXLAVwbAmwDs5j1gJpGBbTZyh.pdf" } ] } ``` |
 | `/documents/{document}`          | DELETE | `DocumentController@destroy`          | Deletes a specific document.                 | `{document}` → Document ID in URL path <br> Example: `/api/documents/23`    | `{ "message": "Document deleted successfully." }` |
 | `/documents/{document}/download` | GET    | `DocumentController@download`         | Downloads the original uploaded document.    | `{document}` → Document ID in URL path <br> Example: `/api/documents/24/download` | **PDF file download** |
-| `/documents/{document}/analyze`  | POST   | `DocumentController@analyze`          | Analyzes a specific document using OpenAI and caches result. | `{document}` → Document ID in URL path                                     | [ Sample Analyzed Document via API](https://docs.google.com/document/d/1gVhWIIIlvtY6aWSQ93RfC79gq0wspIfRP4iagEeLp6o/edit?usp=sharing) |
-| `/analyzed-documents`            | GET    | `DocumentController@analyzedDocuments`| Retrieves a list of analyzed documents for the authenticated user. | None                                                                        | [All Analyzed Document](https://docs.google.com/document/d/1DT5ch7CkiAYwo-SrFnZPLNI8qWX7mxkCAq5WEltcUP0/edit?usp=sharing) |
+| `/documents/{document}/analyze`  | POST   | `DocumentController@analyze`          | Analyzes a specific document using OpenAI and caches result. | `{document}` → Document ID in URL path                                     | [ Sample Analyzed Document via API](https://docs.google.com/document/d/19JldUEUnxEFENBnVSe9me0MSlNJcXMNPpkEV6-wSDB8/edit?usp=sharing) |
+| `/analyzed-documents`            | GET    | `DocumentController@analyzedDocuments`| Retrieves a list of analyzed documents for the authenticated user. | None                                                                        | [All Analyzed Document](https://docs.google.com/document/d/1WT2KnZDRrTKoAU_cs_d_K7McsSjVjksaprcLNSl3-Sk/edit?usp=sharing) |
 
 ---
 
