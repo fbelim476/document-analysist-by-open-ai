@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Smalot\PdfParser\Parser;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /*
 Controller for document manipulation
@@ -130,6 +132,129 @@ class DocumentController extends Controller
     // Document analysis with the help of Open AI API
     public function analyze(Document $document)
     {
+        $cacheKey = "document_analysis_{$document->id}";
+
+        if (Cache::has($cacheKey)) {
+            return response()->json([
+                'message' => 'Analysis fetched from cache',
+                'result' => Cache::get($cacheKey)
+            ]);
+        }
+
+        try {
+
+            $filePath = storage_path("app/private/{$document->filename}");
+
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'message' => 'File not found'
+                ], 404);
+            }
+
+            // Extract text
+            $text = $this->extractText($filePath);
+
+            if (!$text) {
+                return response()->json([
+                    'message' => 'Unable to extract text'
+                ], 400);
+            }
+
+            // Limit text to prevent token overflow
+            $text = Str::limit($text, 8000);
+
+            $prompt = "
+            You are an intelligent study assistant.\n
+            Analyze the following content and extract the most important educational information.\n
+            Your tasks:\n
+            1. Identify and list the most important key points from the content.\n
+            2. Extract the core concepts that a student must remember.\n
+            3. Generate 5 one-mark questions with answers.\n
+            4. Generate 3 two-mark questions with answers.\n
+            5. Generate 5 fill-in-the-blank questions with answers.\n
+            6. Provide a short and clear summary for quick revision.\n
+            Important rules:\n
+            - Focus only on the most important concepts.\n
+            - Keep answers short, clear, and easy for students to understand.\n
+            - Avoid unnecessary explanations.\n
+            - Present the output in clear sections.\n
+
+            Content:
+            {$text}
+            ";
+
+            $response = Http::retry(3, 2000)
+                ->timeout(180)
+                ->connectTimeout(30)
+                ->withHeaders([
+                    'Authorization' => 'Bearer '.config('services.openrouter.key'),
+                    'Content-Type' => 'application/json',
+                ])
+                ->post('https://openrouter.ai/api/v1/chat/completions', [
+
+                    'model' => 'nvidia/nemotron-3-nano-30b-a3b:free',
+
+                    'messages' => [
+                        [
+                            'role' => 'user',
+                            'content' => $prompt
+                        ]
+                    ],
+
+                    'temperature' => 0.3
+                ]);
+
+            if ($response->failed()) {
+
+                Log::error('OpenRouter API error', [
+                    'response' => $response->body()
+                ]);
+
+                return response()->json([
+                    'message' => 'AI request failed'
+                ], 500);
+            }
+
+            $data = $response->json();
+
+            $parsedResult = $data['choices'][0]['message']['content'] ?? null;
+
+            if (!$parsedResult) {
+                return response()->json([
+                    'message' => 'Invalid AI response'
+                ], 500);
+            }
+
+            // Cache result
+            Cache::put($cacheKey, $parsedResult, now()->addHour());
+
+            // Save to database
+            $document->update([
+                'analysis' => $parsedResult,
+                'status' => 'analyzed'
+            ]);
+
+            return response()->json([
+                'message' => 'Analysis completed',
+                'result' => $parsedResult
+            ]);
+
+        } catch (\Exception $e) {
+
+            Log::error("Document analysis failed", [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function analyzeV1(Document $document)
+    {
         $cacheKey = 'document_analysis_' . $document->id;
 
         //  Check if cached result exists
@@ -230,5 +355,35 @@ class DocumentController extends Controller
         return response()->json([
             'analyzed_documents' => $documents
         ]);
+    }
+
+    private function extractText($filePath)
+    {
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        try {
+
+            if ($extension === 'pdf') {
+
+                $parser = new Parser();
+                $pdf = $parser->parseFile($filePath);
+
+                return $pdf->getText();
+            }
+
+            if ($extension === 'txt') {
+                return file_get_contents($filePath);
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+
+            Log::error("Text extraction failed", [
+                'error' => $e->getMessage()
+            ]);
+
+            return null;
+        }
     }
 }
